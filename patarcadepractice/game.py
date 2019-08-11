@@ -1,7 +1,6 @@
-"""
-Platformer Game
-"""
+
 import arcade
+
 
 # Constants
 SCREEN_WIDTH = 1000
@@ -15,8 +14,8 @@ COIN_SCALING = 0.5
 
 # Movement speed of player, in pixels per frame
 PLAYER_MOVEMENT_SPEED = 5
-GRAVITY = 1
-PLAYER_JUMP_SPEED = 15
+# GRAVITY = 1
+# PLAYER_JUMP_SPEED = 15
 
 # How many pixels to keep as a minimum margin between the character
 # and the edge of the screen.
@@ -30,9 +29,7 @@ class MyGame(arcade.Window):
     """
     Main application class.
     """
-
     def __init__(self):
-
         # Call the parent class and set up the window
         super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
 
@@ -56,7 +53,6 @@ class MyGame(arcade.Window):
 
     def setup(self):
         """ Set up the game here. Call this function to restart the game. """
-
         # Used to keep track of our scrolling
         self.view_bottom = 0
         self.view_left = 0
@@ -68,40 +64,31 @@ class MyGame(arcade.Window):
 
         # Set up the player, specifically placing it at these coordinates.
         self.player_sprite = arcade.Sprite("images/player_1/player_stand.png", CHARACTER_SCALING)
-        self.player_sprite.center_x = 64
-        self.player_sprite.center_y = 96
+        self.player_sprite.center_x = int(SCREEN_WIDTH / 2.)
+        self.player_sprite.center_y = int(SCREEN_HEIGHT / 2.)
         self.player_list.append(self.player_sprite)
 
         # Create the ground
-        # This shows using a loop to place multiple sprites horizontally
-        for x in range(0, 1250, 64):
-            # wall = arcade.Sprite("images/tiles/grassMid.png", TILE_SCALING)
-            wall = arcade.Sprite("images/tiles/foliagePack_leaves_002.png", TILE_SCALING)
-            wall.center_x = x
-            wall.center_y = 32
-            self.wall_list.append(wall)
+        self._create_wall_list()
 
-        # Put some crates on the ground
-        # This shows using a coordinate list to place sprites
-        coordinate_list = [[512, 96],
-                           [256, 96],
-                           [768, 96]]
-
-        for coordinate in coordinate_list:
-            # Add a crate on the ground
-            # wall = arcade.Sprite("images/tiles/boxCrate_double.png", TILE_SCALING)
-            wall = arcade.Sprite("images/tiles/particleBrick1a.png", TILE_SCALING)
-            wall.position = coordinate
-            self.wall_list.append(wall)
+        # # Put some crates on the ground
+        # # This shows using a coordinate list to place sprites
+        # coordinate_list = [[512, 96],
+        #                    [256, 96],
+        #                    [768, 96]]
+        #
+        # for coordinate in coordinate_list:
+        #     # Add a crate on the ground
+        #     wall = arcade.Sprite("images/tiles/particleBrick1a.png", TILE_SCALING)
+        #     wall.position = coordinate
+        #     self.wall_list.append(wall)
 
         # Create the 'physics engine'
-        self.physics_engine = arcade.PhysicsEnginePlatformer(self.player_sprite,
-                                                             self.wall_list,
-                                                             GRAVITY)
+        self.physics_engine = arcade.PhysicsEngineSimple(self.player_sprite,
+                                                         self.wall_list)
 
     def on_draw(self):
         """ Render the screen. """
-
         # Clear the screen to the background color
         arcade.start_render()
 
@@ -112,10 +99,10 @@ class MyGame(arcade.Window):
 
     def on_key_press(self, key, modifiers):
         """Called whenever a key is pressed. """
-
         if key == arcade.key.UP or key == arcade.key.W:
-            if self.physics_engine.can_jump():
-                self.player_sprite.change_y = PLAYER_JUMP_SPEED
+            self.player_sprite.change_y = PLAYER_MOVEMENT_SPEED
+        elif key == arcade.key.DOWN or key == arcade.key.S:
+            self.player_sprite.change_y = -PLAYER_MOVEMENT_SPEED
         elif key == arcade.key.LEFT or key == arcade.key.A:
             self.player_sprite.change_x = -PLAYER_MOVEMENT_SPEED
         elif key == arcade.key.RIGHT or key == arcade.key.D:
@@ -123,15 +110,17 @@ class MyGame(arcade.Window):
 
     def on_key_release(self, key, modifiers):
         """Called when the user releases a key. """
-
-        if key == arcade.key.LEFT or key == arcade.key.A:
+        if key == arcade.key.UP or key == arcade.key.W:
+            self.player_sprite.change_y = 0
+        elif key == arcade.key.DOWN or key == arcade.key.S:
+            self.player_sprite.change_y = 0
+        elif key == arcade.key.LEFT or key == arcade.key.A:
             self.player_sprite.change_x = 0
         elif key == arcade.key.RIGHT or key == arcade.key.D:
             self.player_sprite.change_x = 0
 
     def update(self, delta_time):
         """ Movement and game logic """
-
         # Call update on all sprites (The sprites don't do much in this
         # example though.)
         self.physics_engine.update()
@@ -177,6 +166,15 @@ class MyGame(arcade.Window):
                                 SCREEN_WIDTH + self.view_left,
                                 self.view_bottom,
                                 SCREEN_HEIGHT + self.view_bottom)
+
+    def _create_wall_list(self):
+        # This shows using a loop to place multiple sprites horizontally
+        for x in range(0, 500):
+            for y in [20, 500]:
+                wall = arcade.Sprite("images/tiles/foliagePack_leaves_002.png", TILE_SCALING)
+                wall.center_x = x
+                wall.center_y = y
+                self.wall_list.append(wall)
 
 
 def main():
