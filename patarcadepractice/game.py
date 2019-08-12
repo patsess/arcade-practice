@@ -1,5 +1,6 @@
 
 import arcade
+import random
 
 
 # Constants
@@ -35,12 +36,15 @@ class MyGame(arcade.Window):
 
         # These are 'lists' that keep track of our sprites. Each sprite should
         # go into a list.
-        self.coin_list = None
         self.wall_list = None
         self.player_list = None
+        self.computer_sprite = None
+        self.item_list = None
+        self.coin_list = None
 
         # Separate variable that holds the player sprite
         self.player_sprite = None
+        self.player_money = 0
 
         # Our physics engine
         self.physics_engine = None
@@ -57,35 +61,18 @@ class MyGame(arcade.Window):
         self.view_bottom = 0
         self.view_left = 0
 
-        # Create the Sprite lists
-        self.player_list = arcade.SpriteList()
-        self.wall_list = arcade.SpriteList()
-        self.coin_list = arcade.SpriteList()
-
-        # Set up the player, specifically placing it at these coordinates.
-        self.player_sprite = arcade.Sprite("images/player_1/player_stand.png", CHARACTER_SCALING)
-        self.player_sprite.center_x = int(SCREEN_WIDTH / 2.)
-        self.player_sprite.center_y = int(SCREEN_HEIGHT / 2.)
-        self.player_list.append(self.player_sprite)
-
-        # Create the ground
         self._create_wall_list()
-
-        # # Put some crates on the ground
-        # # This shows using a coordinate list to place sprites
-        # coordinate_list = [[512, 96],
-        #                    [256, 96],
-        #                    [768, 96]]
-        #
-        # for coordinate in coordinate_list:
-        #     # Add a crate on the ground
-        #     wall = arcade.Sprite("images/tiles/particleBrick1a.png", TILE_SCALING)
-        #     wall.position = coordinate
-        #     self.wall_list.append(wall)
+        self._create_player_list()
+        self._setup_player()
+        self._create_item_list()
+        self._setup_computer()
+        self._create_coin_list()
 
         # Create the 'physics engine'
         self.physics_engine = arcade.PhysicsEngineSimple(self.player_sprite,
                                                          self.wall_list)
+
+        self.player_money = 0
 
     def on_draw(self):
         """ Render the screen. """
@@ -94,8 +81,15 @@ class MyGame(arcade.Window):
 
         # Draw our sprites
         self.wall_list.draw()
-        self.coin_list.draw()
         self.player_list.draw()
+        self.item_list.draw()
+        self.coin_list.draw()
+
+        arcade.draw_text(f'Money: {self.player_money}',
+                         self.view_left + (LEFT_VIEWPORT_MARGIN / 2),
+                         self.view_bottom + SCREEN_HEIGHT -
+                         (TOP_VIEWPORT_MARGIN / 2),
+                         arcade.color.BLACK, 20, bold=True)
 
     def on_key_press(self, key, modifiers):
         """Called whenever a key is pressed. """
@@ -121,9 +115,11 @@ class MyGame(arcade.Window):
 
     def update(self, delta_time):
         """ Movement and game logic """
-        # Call update on all sprites (The sprites don't do much in this
-        # example though.)
+        # Call update on all sprites
         self.physics_engine.update()
+        self.player_list.update_animation()
+        self._handle_coin_collection()
+        self._handle_computer_collision()
 
         # --- Manage Scrolling ---
 
@@ -167,14 +163,119 @@ class MyGame(arcade.Window):
                                 self.view_bottom,
                                 SCREEN_HEIGHT + self.view_bottom)
 
+    def _create_player_list(self):
+        self.player_list = arcade.SpriteList()
+
+        # self.player_sprite = arcade.Sprite("images/player_1/player_stand.png", CHARACTER_SCALING)
+        # self.player_sprite.center_x = int(SCREEN_WIDTH / 2.)
+        # self.player_sprite.center_y = int(SCREEN_HEIGHT / 2.)
+
+    def _setup_player(self):
+        self.player_sprite = arcade.AnimatedWalkingSprite()
+
+        self.player_sprite.stand_right_textures = []
+        self.player_sprite.stand_right_textures.append(
+            arcade.load_texture("images/player_1/female_stand.png",
+                                scale=CHARACTER_SCALING))
+        self.player_sprite.stand_left_textures = []
+        self.player_sprite.stand_left_textures.append(
+            arcade.load_texture("images/player_1/female_stand.png",
+                                scale=CHARACTER_SCALING, mirrored=True))
+
+        self.player_sprite.walk_right_textures = []
+
+        self.player_sprite.walk_right_textures.append(
+            arcade.load_texture("images/player_1/female_stand.png",
+                                scale=CHARACTER_SCALING))
+        self.player_sprite.walk_right_textures.append(
+            arcade.load_texture("images/player_1/female_walk1.png",
+                                scale=CHARACTER_SCALING))
+        self.player_sprite.walk_right_textures.append(
+            arcade.load_texture("images/player_1/female_walk2.png",
+                                scale=CHARACTER_SCALING))
+        self.player_sprite.walk_right_textures.append(
+            arcade.load_texture("images/player_1/female_walk1.png",
+                                scale=CHARACTER_SCALING))
+
+        self.player_sprite.walk_left_textures = []
+
+        self.player_sprite.walk_left_textures.append(
+            arcade.load_texture("images/player_1/female_stand.png",
+                                scale=CHARACTER_SCALING, mirrored=True))
+        self.player_sprite.walk_left_textures.append(
+            arcade.load_texture("images/player_1/female_walk1.png",
+                                scale=CHARACTER_SCALING, mirrored=True))
+        self.player_sprite.walk_left_textures.append(
+            arcade.load_texture("images/player_1/female_walk2.png",
+                                scale=CHARACTER_SCALING, mirrored=True))
+        self.player_sprite.walk_left_textures.append(
+            arcade.load_texture("images/player_1/female_walk1.png",
+                                scale=CHARACTER_SCALING, mirrored=True))
+
+        # self.player.texture_change_distance = 20
+        self.player_sprite.center_x = int(SCREEN_WIDTH / 2.)
+        self.player_sprite.center_y = int(SCREEN_HEIGHT / 2.)
+        self.player_list.append(self.player_sprite)
+
     def _create_wall_list(self):
-        # This shows using a loop to place multiple sprites horizontally
+        # place horizontally (using multiple sprites)
+        self.wall_list = arcade.SpriteList()
         for x in range(0, 500):
             for y in [20, 500]:
                 wall = arcade.Sprite("images/tiles/foliagePack_leaves_002.png", TILE_SCALING)
                 wall.center_x = x
                 wall.center_y = y
                 self.wall_list.append(wall)
+
+        # place vertically (using multiple sprites)
+        for y in range(20, 500):
+            wall = arcade.Sprite("images/tiles/foliagePack_leaves_002.png", TILE_SCALING)
+            wall.center_x = 0
+            wall.center_y = y
+            self.wall_list.append(wall)
+
+    def _create_item_list(self):
+        self.item_list = arcade.SpriteList()
+
+    def _setup_computer(self):
+        self.computer_sprite = arcade.Sprite(
+            "images/items/genericItem_color_050.png", scale=0.75)
+        self.computer_sprite.center_x = 100
+        self.computer_sprite.center_y = 400
+        self.item_list.append(self.computer_sprite)
+
+    def _create_coin_list(self):
+        self.coin_list = arcade.SpriteList()
+        for i in range(50):
+            # Create the coin instance
+            coin = arcade.Sprite("images/items/bronze_1.png", COIN_SCALING)
+
+            # Position the coin
+            coin.center_x = random.randrange(SCREEN_WIDTH)
+            coin.center_y = random.randrange(SCREEN_HEIGHT)
+
+            coin_placed_well = True
+            for sprite_list in [self.player_list, self.wall_list,
+                                self.item_list]:
+                for s in sprite_list:
+                    if arcade.check_for_collision(coin, s):
+                        coin_placed_well = False
+                        break
+
+            if coin_placed_well:
+                self.coin_list.append(coin)
+
+    def _handle_coin_collection(self):
+        for c in self.coin_list:
+            if arcade.check_for_collision(self.player_sprite, c):
+                c.kill()
+                self.player_money += 1
+
+    def _handle_computer_collision(self):
+        # if arcade.check_for_collision(self.player_sprite,
+        #                               self.computer_sprite):
+        #     pass  # TODO: handle computer options
+        pass
 
 
 def main():
