@@ -6,7 +6,7 @@ import random
 # Constants
 SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 650
-SCREEN_TITLE = "Platformer"
+SCREEN_TITLE = "Top down"
 
 # Constants used to scale our sprites from their original size
 CHARACTER_SCALING = 1
@@ -15,8 +15,6 @@ COIN_SCALING = 0.5
 
 # Movement speed of player, in pixels per frame
 PLAYER_MOVEMENT_SPEED = 5
-# GRAVITY = 1
-# PLAYER_JUMP_SPEED = 15
 
 # How many pixels to keep as a minimum margin between the character
 # and the edge of the screen.
@@ -26,7 +24,7 @@ BOTTOM_VIEWPORT_MARGIN = 50
 TOP_VIEWPORT_MARGIN = 100
 
 
-class MyGame(arcade.Window):
+class TopDownWindow(arcade.Window):
     """
     Main application class.
     """
@@ -85,11 +83,7 @@ class MyGame(arcade.Window):
         self.item_list.draw()
         self.coin_list.draw()
 
-        arcade.draw_text(f'Money: {self.player_money}',
-                         self.view_left + (LEFT_VIEWPORT_MARGIN / 2),
-                         self.view_bottom + SCREEN_HEIGHT -
-                         (TOP_VIEWPORT_MARGIN / 2),
-                         arcade.color.BLACK, 20, bold=True)
+        self._draw_text()
 
     def on_key_press(self, key, modifiers):
         """Called whenever a key is pressed. """
@@ -265,6 +259,13 @@ class MyGame(arcade.Window):
             if coin_placed_well:
                 self.coin_list.append(coin)
 
+    def _draw_text(self):
+        arcade.draw_text(f'Money: {self.player_money}',
+                         self.view_left + (LEFT_VIEWPORT_MARGIN / 2),
+                         self.view_bottom + SCREEN_HEIGHT -
+                         (TOP_VIEWPORT_MARGIN / 2),
+                         arcade.color.BLACK, 20, bold=True)
+
     def _handle_coin_collection(self):
         for c in self.coin_list:
             if arcade.check_for_collision(self.player_sprite, c):
@@ -272,15 +273,22 @@ class MyGame(arcade.Window):
                 self.player_money += 1
 
     def _handle_computer_collision(self):
-        # if arcade.check_for_collision(self.player_sprite,
-        #                               self.computer_sprite):
-        #     pass  # TODO: handle computer options
-        pass
+        if arcade.check_for_collision(self.player_sprite,
+                                      self.computer_sprite):
+            self.player_sprite.center_x = int(SCREEN_WIDTH / 2.)
+            self.player_sprite.center_y = int(SCREEN_HEIGHT / 2.)
+            # window = Computer()
+            pass  # TODO: handle computer options
+
+
+# class Computer(arcade.Window):
+#     def __init__(self):
+#         super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
 
 
 def main():
     """ Main method """
-    window = MyGame()
+    window = TopDownWindow()
     window.setup()
     arcade.run()
 
