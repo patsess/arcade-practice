@@ -43,6 +43,7 @@ class TopDownWindow(arcade.Window):
         # Separate variable that holds the player sprite
         self.player_sprite = None
         self.player_money = 0
+        self.computer_money = 0
 
         # Our physics engine
         self.physics_engine = None
@@ -52,6 +53,11 @@ class TopDownWindow(arcade.Window):
         self.view_left = 0
 
         arcade.set_background_color(arcade.csscolor.CORNFLOWER_BLUE)
+
+        self.current_state = 'top_down_view_running'
+        self.computer_state = 'login'
+        self.computer = arcade.load_texture(
+            "images/backgrounds/computer_screen.png")
 
     def setup(self):
         """ Set up the game here. Call this function to restart the game. """
@@ -71,30 +77,30 @@ class TopDownWindow(arcade.Window):
                                                          self.wall_list)
 
         self.player_money = 0
+        self.computer_money = 0
 
     def on_draw(self):
         """ Render the screen. """
         # Clear the screen to the background color
         arcade.start_render()
 
-        # Draw our sprites
-        self.wall_list.draw()
-        self.player_list.draw()
-        self.item_list.draw()
-        self.coin_list.draw()
-
-        self._draw_text()
+        if self.current_state == 'top_down_view_running':
+            self._draw_running_top_down_view()
+        elif self.current_state == 'computer_running':
+            self._draw_running_computer()
+        else:
+            raise ValueError(f"unrecognised current_state "
+                             f"{self.current_state}")
 
     def on_key_press(self, key, modifiers):
         """Called whenever a key is pressed. """
-        if key == arcade.key.UP or key == arcade.key.W:
-            self.player_sprite.change_y = PLAYER_MOVEMENT_SPEED
-        elif key == arcade.key.DOWN or key == arcade.key.S:
-            self.player_sprite.change_y = -PLAYER_MOVEMENT_SPEED
-        elif key == arcade.key.LEFT or key == arcade.key.A:
-            self.player_sprite.change_x = -PLAYER_MOVEMENT_SPEED
-        elif key == arcade.key.RIGHT or key == arcade.key.D:
-            self.player_sprite.change_x = PLAYER_MOVEMENT_SPEED
+        if self.current_state == 'top_down_view_running':
+            self._on_key_press_running_top_down_view(key, modifiers)
+        elif self.current_state == 'computer_running':
+            self._on_key_press_running_computer(key, modifiers)
+        else:
+            raise ValueError(f"unrecognised current_state "
+                             f"{self.current_state}")
 
     def on_key_release(self, key, modifiers):
         """Called when the user releases a key. """
@@ -109,60 +115,11 @@ class TopDownWindow(arcade.Window):
 
     def update(self, delta_time):
         """ Movement and game logic """
-        # Call update on all sprites
-        self.physics_engine.update()
-        self.player_list.update_animation()
-        self._handle_coin_collection()
-        self._handle_computer_collision()
-
-        # --- Manage Scrolling ---
-
-        # Track if we need to change the viewport
-
-        changed = False
-
-        # Scroll left
-        left_boundary = self.view_left + LEFT_VIEWPORT_MARGIN
-        if self.player_sprite.left < left_boundary:
-            self.view_left -= left_boundary - self.player_sprite.left
-            changed = True
-
-        # Scroll right
-        right_boundary = self.view_left + SCREEN_WIDTH - RIGHT_VIEWPORT_MARGIN
-        if self.player_sprite.right > right_boundary:
-            self.view_left += self.player_sprite.right - right_boundary
-            changed = True
-
-        # Scroll up
-        top_boundary = self.view_bottom + SCREEN_HEIGHT - TOP_VIEWPORT_MARGIN
-        if self.player_sprite.top > top_boundary:
-            self.view_bottom += self.player_sprite.top - top_boundary
-            changed = True
-
-        # Scroll down
-        bottom_boundary = self.view_bottom + BOTTOM_VIEWPORT_MARGIN
-        if self.player_sprite.bottom < bottom_boundary:
-            self.view_bottom -= bottom_boundary - self.player_sprite.bottom
-            changed = True
-
-        if changed:
-            # Only scroll to integers. Otherwise we end up with pixels that
-            # don't line up on the screen
-            self.view_bottom = int(self.view_bottom)
-            self.view_left = int(self.view_left)
-
-            # Do the scrolling
-            arcade.set_viewport(self.view_left,
-                                SCREEN_WIDTH + self.view_left,
-                                self.view_bottom,
-                                SCREEN_HEIGHT + self.view_bottom)
+        if self.current_state == 'top_down_view_running':
+            self._update_top_down_view_running(delta_time)
 
     def _create_player_list(self):
         self.player_list = arcade.SpriteList()
-
-        # self.player_sprite = arcade.Sprite("images/player_1/player_stand.png", CHARACTER_SCALING)
-        # self.player_sprite.center_x = int(SCREEN_WIDTH / 2.)
-        # self.player_sprite.center_y = int(SCREEN_HEIGHT / 2.)
 
     def _setup_player(self):
         self.player_sprite = arcade.AnimatedWalkingSprite()
@@ -259,31 +216,173 @@ class TopDownWindow(arcade.Window):
             if coin_placed_well:
                 self.coin_list.append(coin)
 
-    def _draw_text(self):
-        arcade.draw_text(f'Money: {self.player_money}',
+    def _draw_running_top_down_view(self):
+        self.wall_list.draw()
+        self.player_list.draw()
+        self.item_list.draw()
+        self.coin_list.draw()
+
+        self._draw_background_text()
+
+    def _draw_running_computer(self):
+        self._draw_background_text()
+
+        page_texture = self.computer
+        arcade.draw_texture_rectangle(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2,
+                                      page_texture.width,
+                                      page_texture.height, page_texture, 0)
+
+        if self.computer_state == 'login':
+            text = ("Log into the website\nof your stocks and\nshares ISA "
+                    "provider?\n(y/n)\n")
+        elif self.computer_state == 'deposit_question':
+            text = (f"Account balance: £{self.computer_money}\n\nDeposit "
+                    f"money?\n(y/n)\n")
+        elif self.computer_state == 'deposit_amount':
+            text = ("How much would you\nlike to deposit?\n\n0 - back\n1 - "
+                    "100\n2 - 200\n3 - 500\n4 - 1000\n")
+        elif self.computer_state == 'fund_problem':
+            text = "Not enough funds.\n\nReturn to deposit screen?\n(y/n)\n"
+        else:
+            raise ValueError(f"unrecognised computer_state "
+                             f"{self.computer_state}")
+
+        arcade.draw_text(text,
+                         self.view_left + (SCREEN_WIDTH / 3),
+                         self.view_bottom + (SCREEN_HEIGHT / 2),
+                         arcade.color.BLACK, 20, bold=True)
+
+    def _on_key_press_running_top_down_view(self, key, modifiers):
+        if key == arcade.key.UP or key == arcade.key.W:
+            self.player_sprite.change_y = PLAYER_MOVEMENT_SPEED
+        elif key == arcade.key.DOWN or key == arcade.key.S:
+            self.player_sprite.change_y = -PLAYER_MOVEMENT_SPEED
+        elif key == arcade.key.LEFT or key == arcade.key.A:
+            self.player_sprite.change_x = -PLAYER_MOVEMENT_SPEED
+        elif key == arcade.key.RIGHT or key == arcade.key.D:
+            self.player_sprite.change_x = PLAYER_MOVEMENT_SPEED
+
+    def _on_key_press_running_computer(self, key, modifiers):
+        if key == arcade.key.ESCAPE:
+            self.current_state = 'top_down_view_running'
+            self.player_sprite.center_x = int(SCREEN_WIDTH / 2.)
+            self.player_sprite.center_y = int(SCREEN_HEIGHT / 2.)
+
+        if self.computer_state == 'login':
+            if key == arcade.key.Y:
+                self.computer_state = 'deposit_question'
+            elif key == arcade.key.N:
+                self.current_state = 'top_down_view_running'
+                self.player_sprite.center_x = int(SCREEN_WIDTH / 2.)
+                self.player_sprite.center_y = int(SCREEN_HEIGHT / 2.)
+
+        elif self.computer_state == 'deposit_question':
+            if key == arcade.key.Y:
+                self.computer_state = 'deposit_amount'
+            elif key == arcade.key.N:
+                self.computer_state = 'login'
+
+        elif self.computer_state == 'deposit_amount':
+            if key in [arcade.key.NUM_0, arcade.key.KEY_0]:
+                self.computer_state = 'deposit_question'
+            elif key in [arcade.key.NUM_1, arcade.key.NUM_2, arcade.key.NUM_3,
+                         arcade.key.NUM_4, arcade.key.KEY_1, arcade.key.KEY_2,
+                         arcade.key.KEY_3, arcade.key.KEY_4]:
+                if key in [arcade.key.NUM_1, arcade.key.KEY_1]:
+                    money = 100
+                elif key in [arcade.key.NUM_2, arcade.key.KEY_2]:
+                    money = 200
+                elif key in [arcade.key.NUM_3, arcade.key.KEY_3]:
+                    money = 500
+                elif key in [arcade.key.NUM_4, arcade.key.KEY_4]:
+                    money = 1000
+                else:
+                    raise ValueError(f"unrecognised key {key}")
+
+                if self.player_money < money:
+                    self.computer_state = 'fund_problem'
+                else:
+                    self.player_money -= money
+                    self.computer_money += money
+                    self.computer_state = 'deposit_question'
+
+        elif self.computer_state == 'fund_problem':
+            if key == arcade.key.Y:
+                self.computer_state = 'deposit_amount'
+            elif key == arcade.key.N:
+                self.computer_state = 'login'
+
+        else:
+            raise ValueError(f"unrecognised computer_state "
+                             f"{self.computer_state}")
+
+    def _draw_background_text(self):
+        arcade.draw_text(f"Money: £{self.player_money}\n",
                          self.view_left + (LEFT_VIEWPORT_MARGIN / 2),
                          self.view_bottom + SCREEN_HEIGHT -
                          (TOP_VIEWPORT_MARGIN / 2),
                          arcade.color.BLACK, 20, bold=True)
 
+    def _update_top_down_view_running(self, delta_time):
+        # Call update on all sprites
+        self.physics_engine.update()
+        self.player_list.update_animation()
+        self._handle_coin_collection()
+        self._handle_computer_collision()
+
+        # --- Manage Scrolling ---
+
+        # Track if we need to change the viewport
+
+        changed = False
+
+        # Scroll left
+        left_boundary = self.view_left + LEFT_VIEWPORT_MARGIN
+        if self.player_sprite.left < left_boundary:
+            self.view_left -= left_boundary - self.player_sprite.left
+            changed = True
+
+        # Scroll right
+        right_boundary = self.view_left + SCREEN_WIDTH - RIGHT_VIEWPORT_MARGIN
+        if self.player_sprite.right > right_boundary:
+            self.view_left += self.player_sprite.right - right_boundary
+            changed = True
+
+        # Scroll up
+        top_boundary = self.view_bottom + SCREEN_HEIGHT - TOP_VIEWPORT_MARGIN
+        if self.player_sprite.top > top_boundary:
+            self.view_bottom += self.player_sprite.top - top_boundary
+            changed = True
+
+        # Scroll down
+        bottom_boundary = self.view_bottom + BOTTOM_VIEWPORT_MARGIN
+        if self.player_sprite.bottom < bottom_boundary:
+            self.view_bottom -= bottom_boundary - self.player_sprite.bottom
+            changed = True
+
+        if changed:
+            # Only scroll to integers. Otherwise we end up with pixels that
+            # don't line up on the screen
+            self.view_bottom = int(self.view_bottom)
+            self.view_left = int(self.view_left)
+
+            # Do the scrolling
+            arcade.set_viewport(self.view_left,
+                                SCREEN_WIDTH + self.view_left,
+                                self.view_bottom,
+                                SCREEN_HEIGHT + self.view_bottom)
+
     def _handle_coin_collection(self):
         for c in self.coin_list:
             if arcade.check_for_collision(self.player_sprite, c):
                 c.kill()
-                self.player_money += 1
+                self.player_money += 10
 
     def _handle_computer_collision(self):
         if arcade.check_for_collision(self.player_sprite,
                                       self.computer_sprite):
-            self.player_sprite.center_x = int(SCREEN_WIDTH / 2.)
-            self.player_sprite.center_y = int(SCREEN_HEIGHT / 2.)
-            # window = Computer()
-            pass  # TODO: handle computer options
-
-
-# class Computer(arcade.Window):
-#     def __init__(self):
-#         super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
+            self.computer_state = 'login'
+            self.current_state = 'computer_running'
 
 
 def main():
