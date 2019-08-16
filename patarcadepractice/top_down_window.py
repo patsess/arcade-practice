@@ -228,7 +228,8 @@ class TopDownWindow(arcade.Window):
         self._draw_background_text()
 
         page_texture = self.computer
-        arcade.draw_texture_rectangle(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2,
+        arcade.draw_texture_rectangle(self.view_left + (SCREEN_WIDTH / 2),
+                                      self.view_bottom + (SCREEN_HEIGHT / 2),
                                       page_texture.width,
                                       page_texture.height, page_texture, 0)
 
