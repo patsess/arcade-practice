@@ -130,7 +130,7 @@ class TopDownWindow(arcade.Window):
         # if prop_through_year_start > 0.9:
         year_end = int(self.total_game_seconds) // 50
         if year_start < year_end:
-            self._create_coin_list()  # TODO: WHY DOES THIS NOT WORK???
+            self._create_coin_list()  # TODO: WHY DOES THIS NOT WORK??? (although it does sometimes)
 
     def _create_player_list(self):
         self.player_list = arcade.SpriteList()
