@@ -23,6 +23,9 @@ RIGHT_VIEWPORT_MARGIN = 150
 BOTTOM_VIEWPORT_MARGIN = 50
 TOP_VIEWPORT_MARGIN = 100
 
+# TODO: for returns, could randomly sample (with replacement) from actual
+#  returns from a global etf between years (e.g.) 1990 and 2018
+
 
 class TopDownWindow(arcade.Window):
     """
@@ -47,6 +50,7 @@ class TopDownWindow(arcade.Window):
 
         # Our physics engine
         self.physics_engine = None
+        self.total_game_seconds = 0.
 
         # Used to keep track of our scrolling
         self.view_bottom = 0
@@ -75,6 +79,7 @@ class TopDownWindow(arcade.Window):
         # Create the 'physics engine'
         self.physics_engine = arcade.PhysicsEngineSimple(self.player_sprite,
                                                          self.wall_list)
+        self.total_game_seconds = 0.
 
         self.player_money = 0
         self.computer_money = 0
@@ -115,8 +120,17 @@ class TopDownWindow(arcade.Window):
 
     def update(self, delta_time):
         """ Movement and game logic """
+        year_start = int(self.total_game_seconds) // 50  # TODO: move to method (repeated elsewhere)
+        # prop_through_year_start = (game_seconds_start % 50) / 50.  # TODO: I don't need this right?
+
         if self.current_state == 'top_down_view_running':
-            self._update_top_down_view_running(delta_time)
+            self._update_top_down_view_running()
+            self.total_game_seconds += delta_time
+
+        # if prop_through_year_start > 0.9:
+        year_end = int(self.total_game_seconds) // 50
+        if year_start < year_end:
+            self._create_coin_list()  # TODO: WHY DOES THIS NOT WORK???
 
     def _create_player_list(self):
         self.player_list = arcade.SpriteList()
@@ -318,13 +332,15 @@ class TopDownWindow(arcade.Window):
                              f"{self.computer_state}")
 
     def _draw_background_text(self):
-        arcade.draw_text(f"Money: £{self.player_money}\n",
-                         self.view_left + (LEFT_VIEWPORT_MARGIN / 2),
-                         self.view_bottom + SCREEN_HEIGHT -
-                         (TOP_VIEWPORT_MARGIN / 2),
-                         arcade.color.BLACK, 20, bold=True)
+        year = int(self.total_game_seconds) // 20
+        arcade.draw_text(
+            f"Year: {year}\n\nMoney in current account: £{self.player_money}"
+            f"\n",
+            self.view_left + (LEFT_VIEWPORT_MARGIN / 2),
+            self.view_bottom + SCREEN_HEIGHT - TOP_VIEWPORT_MARGIN,
+            arcade.color.BLACK, 20, bold=True)
 
-    def _update_top_down_view_running(self, delta_time):
+    def _update_top_down_view_running(self):
         # Call update on all sprites
         self.physics_engine.update()
         self.player_list.update_animation()
