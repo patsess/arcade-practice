@@ -37,7 +37,7 @@ TOP_VIEWPORT_MARGIN = 100
 #  returns from a global etf between years (e.g.) 1990 and 2018
 
 
-class TopDownWindow(arcade.Window):
+class InvestorGame(arcade.Window):
     """
     Main application class.
     """
@@ -442,7 +442,7 @@ class TopDownWindow(arcade.Window):
 
 def main():
     """ Main method """
-    window = TopDownWindow()
+    window = InvestorGame()
     window.setup()
     arcade.run()
 
