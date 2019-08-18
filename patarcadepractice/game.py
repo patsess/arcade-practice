@@ -1,6 +1,7 @@
 
 import arcade
 import random
+import numpy as np
 
 
 # Constants
@@ -120,17 +121,23 @@ class TopDownWindow(arcade.Window):
 
     def update(self, delta_time):
         """ Movement and game logic """
-        year_start = int(self.total_game_seconds) // 50  # TODO: move to method (repeated elsewhere)
-        # prop_through_year_start = (game_seconds_start % 50) / 50.  # TODO: I don't need this right?
+        year_start = self._get_current_year()
+        day_start = self._get_day_in_current_year()
 
         if self.current_state == 'top_down_view_running':
             self._update_top_down_view_running()
             self.total_game_seconds += delta_time
 
-        # if prop_through_year_start > 0.9:
-        year_end = int(self.total_game_seconds) // 50
+        year_end = self._get_current_year()
         if year_start < year_end:
-            self._create_coin_list()  # TODO: WHY DOES THIS NOT WORK??? (although it does sometimes)
+            self._update_player_money()
+            self._create_coin_list()
+
+        day_end = self._get_day_in_current_year()
+        n_days_past = day_end - day_start
+        if n_days_past > 0:
+            for _ in range(n_days_past):
+                self._update_computer_money()
 
     def _create_player_list(self):
         self.player_list = arcade.SpriteList()
@@ -242,8 +249,8 @@ class TopDownWindow(arcade.Window):
         self._draw_background_text()
 
         page_texture = self.computer
-        arcade.draw_texture_rectangle(self.view_left + (SCREEN_WIDTH / 2),
-                                      self.view_bottom + (SCREEN_HEIGHT / 2),
+        arcade.draw_texture_rectangle(self.view_left + (SCREEN_WIDTH / 2.),
+                                      self.view_bottom + (SCREEN_HEIGHT / 2.),
                                       page_texture.width,
                                       page_texture.height, page_texture, 0)
 
@@ -251,8 +258,8 @@ class TopDownWindow(arcade.Window):
             text = ("Log into the website\nof your stocks and\nshares ISA "
                     "provider?\n(y/n)\n")
         elif self.computer_state == 'deposit_question':
-            text = (f"Account balance: £{self.computer_money}\n\nDeposit "
-                    f"money?\n(y/n)\n")
+            text = (f"Account balance: £{np.round(self.computer_money, 2)}\n"
+                    f"\nDeposit money?\n(y/n)\n")
         elif self.computer_state == 'deposit_amount':
             text = ("How much would you\nlike to deposit?\n\n0 - back\n1 - "
                     "100\n2 - 200\n3 - 500\n4 - 1000\n")
@@ -262,10 +269,10 @@ class TopDownWindow(arcade.Window):
             raise ValueError(f"unrecognised computer_state "
                              f"{self.computer_state}")
 
-        arcade.draw_text(text,
-                         self.view_left + (SCREEN_WIDTH / 3),
-                         self.view_bottom + (SCREEN_HEIGHT / 2),
-                         arcade.color.BLACK, 20, bold=True)
+        arcade.draw_text(
+            text, self.view_left + (SCREEN_WIDTH / 3.),
+            self.view_bottom + (SCREEN_HEIGHT / 2.),
+            arcade.color.BLACK, 20, bold=True)
 
     def _on_key_press_running_top_down_view(self, key, modifiers):
         if key == arcade.key.UP or key == arcade.key.W:
@@ -332,13 +339,35 @@ class TopDownWindow(arcade.Window):
                              f"{self.computer_state}")
 
     def _draw_background_text(self):
-        year = int(self.total_game_seconds) // 20
+        year = self._get_current_year()
         arcade.draw_text(
-            f"Year: {year}\n\nMoney in current account: £{self.player_money}"
-            f"\n",
-            self.view_left + (LEFT_VIEWPORT_MARGIN / 2),
-            self.view_bottom + SCREEN_HEIGHT - TOP_VIEWPORT_MARGIN,
+            f"Year: {year}\n"
+            f"Current account: £{np.round(self.player_money, 2)}\n"
+            f"Stocks and shares ISA: £{np.round(self.computer_money, 2)}\n",
+            self.view_left + (LEFT_VIEWPORT_MARGIN / 2.),
+            self.view_bottom + SCREEN_HEIGHT - (TOP_VIEWPORT_MARGIN * 1.1),
             arcade.color.BLACK, 20, bold=True)
+
+    def _get_current_year(self):
+        return int(self.total_game_seconds) // 20
+
+    def _get_prop_through_current_year(self):
+        return (int(self.total_game_seconds) % 20) / 20.
+
+    def _get_day_in_current_year(self):
+        return int(self._get_prop_through_current_year() * 365)
+
+    def _update_player_money(self):
+        self.player_money += self.player_money * 0.01
+        # TODO: interest paid should depend on the proportion of the year that
+        #  money is in the account
+
+    def _update_computer_money(self):
+        loc_ = 0.0002  # note: annualised_return = ((1 + loc_) ** 365) - 1
+        scale_ = 0.005
+        returns = np.maximum(
+            -0.1, np.minimum(0.1, np.random.normal(loc=loc_, scale=scale_)))
+        self.computer_money += self.computer_money * returns
 
     def _update_top_down_view_running(self):
         # Call update on all sprites
