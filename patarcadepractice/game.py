@@ -24,6 +24,15 @@ RIGHT_VIEWPORT_MARGIN = 150
 BOTTOM_VIEWPORT_MARGIN = 50
 TOP_VIEWPORT_MARGIN = 100
 
+# TODO: add inflation
+# TODO: add retirement etc
+# TODO: add variation in income opportunity - could pay money to get
+#  up-skilled, resulting in the coins being worth more; over time skills
+#  already gained should depreciate (and this should be shown in text so that
+#  the player knows what's going on, could even have announcements on when new
+#  technology is released)
+# TODO: add out-goings - rent unless a place is bought (then mortgage)
+
 # TODO: for returns, could randomly sample (with replacement) from actual
 #  returns from a global etf between years (e.g.) 1990 and 2018
 
